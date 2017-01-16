@@ -1,0 +1,5 @@
+h5py
+hic
+numpy
+PyYAML
+scikit-learn >= 0.18
