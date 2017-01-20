@@ -1,3 +1,4 @@
+*.dat
 *.hdf
 *.npy
 *.pdf
