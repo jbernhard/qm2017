@@ -1,6 +1,7 @@
 """ experimental data """
 
 from collections import defaultdict
+from itertools import compress
 import logging
 import pickle
 from urllib.request import urlopen
@@ -15,9 +16,10 @@ class HEPData:
     """
     Interface to a HEPData yaml file.
 
+    Ignore centrality bins above the specified `maxcent`.
+
     """
-    def __init__(self, inspire_rec, table, version=1):
-        self._cent = None
+    def __init__(self, inspire_rec, table, version=1, maxcent=80):
         cachefile = (
             cachedir / 'hepdata' /
             'ins{}_table{}.pkl'.format(inspire_rec, table)
@@ -38,15 +40,38 @@ class HEPData:
                 self.data = yaml.load(u)
                 pickle.dump(self.data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def x(self, name, case=True):
+        # extract centrality bins
+        for x in self.data['independent_variables']:
+            if x['header']['name'].lower() == 'centrality':
+                cent = [(v['low'], v['high']) for v in x['values']]
+                break
+
+        # select bins whose upper edge is <= maxcent
+        self._centselectors = [c[1] <= maxcent for c in cent]
+        cent = self._filtercent(cent)
+
+        # save centrality bins and midpoints as public attribute
+        self.cent = dict(
+            cent=cent,
+            x=np.array([(a + b)/2 for a, b in cent])
+        )
+
+    def _filtercent(self, values):
+        """
+        Filter `values` by the centrality selectors created in the constructor
+        (i.e. ignore bins above maxcent).
+
+        """
+        return list(compress(values, self._centselectors))
+
+    def x(self, name):
         """
         Get an independent variable ("x" data) with the given name.
 
         """
         for x in self.data['independent_variables']:
-            x_name = x['header']['name']
-            if (x_name if case else x_name.lower()) == name:
-                return x['values']
+            if x['header']['name'] == name:
+                return self._filtercent(x['values'])
 
     def y(self, name=None, **quals):
         """
@@ -57,25 +82,7 @@ class HEPData:
             if name is None or y['header']['name'] == name:
                 y_quals = {q['name']: q['value'] for q in y['qualifiers']}
                 if all(y_quals[k] == v for k, v in quals.items()):
-                    return y['values']
-
-    def cent(self):
-        """
-        Return a dict containing the centrality bins as a list of (low, high)
-        tuples and the midpoints (x values) as a 1D np.array.
-
-        """
-        if self._cent is None:
-            cent = [
-                tuple(v[k] for k in ['low', 'high'])
-                for v in self.x('centrality', case=False)
-            ]
-            self._cent = dict(
-                cent=cent,
-                x=np.array([(a + b)/2 for a, b in cent])
-            )
-
-        return self._cent
+                    return self._filtercent(y['values'])
 
     def dataset(self, name=None, **quals):
         """
@@ -94,7 +101,7 @@ class HEPData:
         return dict(
             y=np.array(y),
             yerr={k: np.array(v) for k, v in yerr.items()},
-            **self.cent()
+            **self.cent
         )
 
 
@@ -134,7 +141,7 @@ def get_all_data():
                     e: combine_func([d['yerr'][e] for d in dsets], axis=0)
                     for e in dsets[0]['yerr']
                 },
-                **d.cent()
+                **d.cent
             )
 
     # PbPb2760 and PbPb5020 flows
