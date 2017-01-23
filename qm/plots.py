@@ -166,52 +166,31 @@ def auto_ticks(
             axis.set_minor_locator(ticker.AutoMinorLocator(minor))
 
 
-def getitems(obj, *keys):
-    """
-    Get items from a nested dict-like object.  Equivalent to
-
-        obj[k0][k1]...[kn]
-
-    for keys = [k0, k1, ..., kn].  Keys of None are ignored.
-
-    """
-    r = obj
-    for k in keys:
-        if k is not None:
-            r = r[k]
-    return r
-
-
 @plot
 def observables():
     """
     Model observables at all design points with experimental data points.
 
     """
-    id_parts = [
-        ('pion',   r'$\pi^\pm$', 'Blues'),
-        ('kaon',   r'$K^\pm$', 'Greens'),
-        ('proton', r'$p\bar p$', 'Reds')
-    ]
+    charged_parts = [('dNch_deta', None, r'$N_\mathrm{ch}$', 'Greys')]
 
-    charged_parts = [(None, r'$N_\mathrm{ch}$', 'Greys')]
+    def id_parts(obs):
+        return [
+            (obs, 'pion',   r'$\pi^\pm$', 'Blues'),
+            (obs, 'kaon',   r'$K^\pm$', 'Greens'),
+            (obs, 'proton', r'$p\bar p$', 'Reds'),
+        ]
 
     flows = [
-        (n, '$v_{}$'.format(n), c)
+        ('vn', n, '$v_{}$'.format(n), c)
         for n, c in enumerate(['GnBu', 'Purples', 'Oranges'], start=2)
     ]
 
     plots = [
-        ('Yields', r'$dN_\mathrm{ch}/d\eta,\ dN/dy$', (1., 2e4), [
-            ('dNch_deta', charged_parts),
-            ('dN_dy', id_parts)
-        ]),
-        ('Mean $p_T$', r'$p_T$ [GeV]', (0, 2.), [
-            ('mean_pT', id_parts)
-        ]),
-        ('Flow cumulants', r'$v_n\{2\}$', (0, 0.15), [
-            ('vn', flows)
-        ]),
+        ('Yields', r'$dN_\mathrm{ch}/d\eta,\ dN/dy$', (1., 2e4),
+         charged_parts + id_parts('dN_dy')),
+        ('Mean $p_T$', r'$p_T$ [GeV]', (0, 2.), id_parts('mean_pT')),
+        ('Flow cumulants', r'$v_n\{2\}$', (0, 0.15), flows),
     ]
 
     fig, axes = plt.subplots(
@@ -219,36 +198,35 @@ def observables():
         figsize=(fullwidth, .55*fullwidth)
     )
 
-    for (system, (title, ylabel, ylim, observables)), ax in zip(
+    for (system, (title, ylabel, ylim, subplots)), ax in zip(
             itertools.product(systems, plots), axes.flat
     ):
-        for obs, subplots in observables:
+        for obs, subobs, label, cmap in subplots:
             factor = 5 if obs == 'dNch_deta' else 1
-            for subobs, label, cmap in subplots:
-                color = getattr(plt.cm, cmap)(.6)
+            color = getattr(plt.cm, cmap)(.6)
 
-                dset = getitems(model.data, system, obs, subobs)
-                x = dset['x']
-                Y = dset['Y'] * factor
+            dset = model.data[system][obs][subobs]
+            x = dset['x']
+            Y = dset['Y'] * factor
 
-                for y in Y:
-                    ax.plot(x, y, color=color, alpha=.08, lw=.3)
+            for y in Y:
+                ax.plot(x, y, color=color, alpha=.08, lw=.3)
 
-                try:
-                    dset = getitems(expt.data, system, obs, subobs)
-                except KeyError:
-                    continue
+            try:
+                dset = expt.data[system][obs][subobs]
+            except KeyError:
+                continue
 
-                x = dset['x']
-                y = dset['y'] * factor
-                yerr = np.sqrt(sum(
-                    e**2 for e in dset['yerr'].values()
-                )) * factor
+            x = dset['x']
+            y = dset['y'] * factor
+            yerr = np.sqrt(sum(
+                e**2 for e in dset['yerr'].values()
+            )) * factor
 
-                ax.errorbar(
-                    x, y, yerr=yerr, fmt='o', ms=1.7,
-                    capsize=0, color='.25', zorder=1000
-                )
+            ax.errorbar(
+                x, y, yerr=yerr, fmt='o', ms=1.7,
+                capsize=0, color='.25', zorder=1000
+            )
 
         if title == 'Yields':
             ax.set_yscale('log')

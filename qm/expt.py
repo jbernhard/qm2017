@@ -114,7 +114,7 @@ def get_all_data():
             ('PbPb5020', (1410589, 2),
              r'$\mathrm{d}N_\mathrm{ch}/\mathrm{d}\eta$'),
     ]:
-        data[system]['dNch_deta'] = HEPData(*args).dataset(name)
+        data[system]['dNch_deta'] = {None: HEPData(*args).dataset(name)}
 
     # PbPb2760 identified dN/dy and mean pT
     system = 'PbPb2760'
