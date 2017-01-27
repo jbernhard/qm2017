@@ -162,6 +162,24 @@ def get_all_data():
 data = get_all_data()
 
 
+def cov(x, y, yerr, stat_frac=1e-4, sys_corr_length=100, **kwargs):
+    """
+    Estimate a covariance matrix from stat and sys errors.
+
+    """
+    try:
+        stat = yerr['stat']
+        sys = yerr['sys']
+    except KeyError:
+        stat = y * stat_frac
+        sys = yerr['sum']
+
+    return np.diag(stat**2) + (
+        np.exp(-.5*(np.subtract.outer(x, x)/sys_corr_length)**2) *
+        np.outer(sys, sys)
+    )
+
+
 def print_data(d, indent=0):
     """
     Pretty print the nested data dict.
