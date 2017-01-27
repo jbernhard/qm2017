@@ -221,6 +221,24 @@ class Chain:
         with self.open(mode) as f:
             yield f[name]
 
+    def load(self, *keys, thin=1):
+        """
+        Read the chain from file.  If 'keys' are given, read only those
+        parameters.
+
+        """
+        if keys:
+            indices = [self.keys.index(k) for k in keys]
+            ndim = len(keys)
+            if ndim == 1:
+                indices = indices[0]
+        else:
+            ndim = self.ndim
+            indices = slice(None)
+
+        with self.dataset() as d:
+            return np.array(d[:, ::thin, indices]).reshape(-1, ndim)
+
     def samples(self, n=1):
         """
         Predict model output at parameter points randomly drawn from the chain.
@@ -234,6 +252,24 @@ class Chain:
             ])
 
         return self._predict(X)
+
+
+def credible_interval(samples, ci=.9):
+    """
+    Compute the HPD credible interval (default 90%) for an array of samples.
+
+    """
+    # number of intervals to compute
+    nci = int((1 - ci)*samples.size)
+
+    # find highest posterior density (HPD) credible interval
+    # i.e. the one with minimum width
+    argp = np.argpartition(samples, [nci, samples.size - nci])
+    cil = np.sort(samples[argp[:nci]])   # interval lows
+    cih = np.sort(samples[argp[-nci:]])  # interval highs
+    ihpd = np.argmin(cih - cil)
+
+    return cil[ihpd], cih[ihpd]
 
 
 def main():

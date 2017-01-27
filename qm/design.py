@@ -72,17 +72,17 @@ class Design:
         self.keys, labels, self.range = map(list, zip(*[
             ('norm',          r'{Norm}',                      (norm_range   )),
             ('trento_p',      r'p',                           ( -0.5,    0.5)),
-            ('fluct_std',     r'\sigma_{fluct}$',             (  0.0,    2.0)),
+            ('fluct_std',     r'\sigma {fluct}',              (  0.0,    2.0)),
             ('nucleon_width', r'w [{fm}]',                    (  0.3,    1.0)),
             ('dmin3',         r'd_{min}^3 [{fm}^3]',          (  0.0, 1.7**3)),
-            ('tau_fs',        r'\tau_{fs} [{fm}/c]',          (  0.0,    1.0)),
+            ('tau_fs',        r'\tau {fs} [{fm}/c]',          (  0.0,    1.0)),
             ('etas_hrg',      r'\eta/s {hrg}',                (  0.1,    0.5)),
             ('etas_min',      r'\eta/s {min}',                (  0.0,    0.3)),
             ('etas_slope',    r'\eta/s {slope} [{GeV}^{-1}]', (  0.0,    3.0)),
             ('etas_curv',     r'\eta/s {crv}',                ( -1.0,    1.0)),
             ('zetas_max',     r'\zeta/s {max}',               (  0.0,    0.1)),
             ('zetas_width',   r'\zeta/s {width} [{GeV}]',     (  0.0,   0.05)),
-            ('Tswitch',       r'T_{switch} [{GeV}]',          ( 0.13,   0.16)),
+            ('Tswitch',       r'T {switch} [{GeV}]',          ( 0.13,   0.16)),
         ]))
 
         # convert labels into TeX:
