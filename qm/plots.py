@@ -6,7 +6,9 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import patches
 from matplotlib import ticker
+from scipy.interpolate import PchipInterpolator
 
 from . import workdir, systems, expt, model, mcmc
 
@@ -361,29 +363,46 @@ def format_ci(samples, ci=.9):
     ])
 
 
-@plot
-def posterior():
+def _posterior(params=None, ignore=None, scale=1, padr=.99, padt=.98):
     """
     Triangle plot of posterior marginal and joint distributions.
 
     """
     chain = mcmc.Chain()
-    data = chain.load().T
+
+    if params is None and ignore is None:
+        params = set(chain.keys)
+    elif params is not None:
+        params = set(params)
+    elif ignore is not None:
+        params = set(chain.keys) - set(ignore)
+
+    keys, labels, ranges = map(list, zip(*(
+        i for i in zip(chain.keys, chain.labels, chain.range)
+        if i[0] in params
+    )))
+    ndim = len(params)
+
+    data = chain.load(*keys).T
 
     cmap = plt.cm.Blues
     line_color = cmap(.8)
     fill_color = cmap(.5, alpha=.1)
 
     fig, axes = plt.subplots(
-        nrows=chain.ndim, ncols=chain.ndim,
+        nrows=ndim, ncols=ndim,
         sharex='col', sharey='row',
-        figsize=(fullheight, fullheight)
+        figsize=2*(scale*fullheight,)
     )
 
-    for ax, d, lim in zip(axes.diagonal(), data, chain.range):
-        counts, edges = np.histogram(d, bins=200, range=lim)
+    for ax, d, lim in zip(axes.diagonal(), data, ranges):
+        counts, edges = np.histogram(d, bins=50, range=lim)
         x = (edges[1:] + edges[:-1]) / 2
-        y = .84 * (lim[1] - lim[0]) * counts / counts.max() + lim[0]
+        y = .85 * (lim[1] - lim[0]) * counts / counts.max() + lim[0]
+        # smooth histogram with monotonic cubic interpolation
+        interp = PchipInterpolator(x, y)
+        x = np.linspace(x[0], x[-1], 10*x.size)
+        y = interp(x)
         ax.plot(x, y, lw=.5, color=line_color)
         ax.fill_between(x, lim[0], y, color=fill_color, zorder=-10)
 
@@ -395,27 +414,30 @@ def posterior():
         ax.set_yticks(ticks)
 
         ax.annotate(
-            format_ci(d), (.2, .95), xycoords='axes fraction',
-            ha='left', va='bottom', fontsize=3.5
+            format_ci(d), (.62, .92), xycoords='axes fraction',
+            ha='center', va='bottom', fontsize=4.5
         )
 
     for ny, nx in zip(*np.tril_indices_from(axes, k=-1)):
         H, xedges, yedges = np.histogram2d(
-            data[nx], data[ny], bins=200,
-            range=(chain.range[nx], chain.range[ny])
+            data[nx], data[ny], bins=100,
+            range=(ranges[nx], ranges[ny])
         )
         H[H == 0] = None
         axes[ny][nx].pcolorfast(xedges, yedges, H.T, cmap=cmap)
+
         axes[nx][ny].set_axis_off()
 
-    for n, label in enumerate(chain.labels):
+    for n, label in enumerate(labels):
         for ax, xy in [(axes[-1, n], 'x'), (axes[n, 0], 'y')]:
             getattr(ax, 'set_{}label'.format(xy))(
-                label.replace(r'\ [', '$\n$['), fontdict=dict(size=3)
+                label.replace(r'\ [', '$\n$['), fontdict=dict(size=4)
             )
             ticklabels = getattr(ax, 'get_{}ticklabels'.format(xy))()
             for t in ticklabels:
-                t.set_fontsize(2.5)
+                t.set_fontsize(3)
+                if xy == 'x' and len(str(sum(ranges[n])/2)) > 4:
+                    t.set_rotation(30)
             if xy == 'x':
                 ticklabels[0].set_horizontalalignment('left')
                 ticklabels[-1].set_horizontalalignment('right')
@@ -423,7 +445,100 @@ def posterior():
                 ticklabels[0].set_verticalalignment('bottom')
                 ticklabels[-1].set_verticalalignment('top')
 
-    set_tight(fig, pad=.05, h_pad=.2, w_pad=.2, rect=[0., 0., .98, .98])
+    set_tight(fig, pad=.05, h_pad=.3, w_pad=.3, rect=[0., 0., padr, padt])
+
+
+@plot
+def posterior():
+    _posterior(
+        ignore={'norm {}'.format(s) for s in systems} | {'dmin3', 'etas_hrg'}
+    )
+
+
+@plot
+def posterior_withnorm():
+    _posterior(scale=1.2, ignore={'dmin3', 'etas_hrg'})
+
+
+@plot
+def posterior_etas():
+    _posterior(
+        scale=.45, padt=.97, padr=1.,
+        params={'etas_min', 'etas_slope', 'etas_curv'}
+    )
+
+
+@plot
+def posterior_zetas():
+    _posterior(
+        scale=.33, padt=.96, padr=1.,
+        params={'zetas_max', 'zetas_width'}
+    )
+
+
+@plot
+def posterior_p():
+    """
+    Distribution of trento p parameter with annotations for other models.
+
+    """
+    plt.figure(figsize=(.65*textwidth, .25*textwidth))
+    ax = plt.axes()
+
+    data = mcmc.Chain().load('trento_p').ravel()
+
+    counts, edges = np.histogram(data, bins=50)
+    x = (edges[1:] + edges[:-1]) / 2
+    y = counts / counts.max()
+    interp = PchipInterpolator(x, y)
+    x = np.linspace(x[0], x[-1], 10*x.size)
+    y = interp(x)
+    ax.plot(x, y, color=plt.cm.Blues(0.8))
+    ax.fill_between(x, y, color=plt.cm.Blues(0.15), zorder=-10)
+
+    ax.set_xlabel('$p$')
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    for label, x, err in [
+            ('KLN', -.67, .01),
+            ('EKRT /\nIP-Glasma', 0, .1),
+            ('Wounded\nnucleon', 1, None),
+    ]:
+        args = ([x], [0], 'o') if err is None else ([x - err, x + err], [0, 0])
+        ax.plot(*args, lw=4, ms=4, color=offblack, alpha=.58, clip_on=False)
+
+        if label.startswith('EKRT'):
+            x -= .275
+
+        ax.text(x, .05, label, va='bottom', ha='center')
+
+    ax.text(.1, .8, format_ci(data))
+    ax.set_xticks(np.arange(-10, 11, 5)/10)
+    ax.set_xticks(np.arange(-75, 76, 50)/100, minor=True)
+
+    for t in ax.get_xticklabels():
+        t.set_y(-.03)
+
+    xm = 1.2
+    ax.set_xlim(-xm, xm)
+    ax.add_artist(
+        patches.FancyArrowPatch(
+            (-xm, 0), (xm, 0),
+            linewidth=.6,
+            arrowstyle=patches.ArrowStyle.CurveFilledAB(
+                head_length=3, head_width=1.5
+            ),
+            facecolor=offblack, edgecolor=offblack,
+            clip_on=False, zorder=100
+        )
+    )
+
+    ax.set_yticks([])
+    ax.set_ylim(0, 1.01*y.max())
+
+    set_tight(pad=0)
 
 
 @plot
