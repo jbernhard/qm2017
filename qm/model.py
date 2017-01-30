@@ -12,6 +12,47 @@ from . import workdir, cachedir, systems, expt
 from .design import Design
 
 
+# TODO move this symmetric cumulant code to hic
+
+def csq(x):
+    """
+    Return the absolute square |x|^2 of a complex array.
+
+    """
+    return (x*x.conj()).real
+
+
+def corr2(Qn, M):
+    """
+    Compute the two-particle correlation <v_n^2>.
+
+    """
+    return (csq(Qn) - M).sum() / (M*(M - 1)).sum()
+
+
+def symmetric_cumulant(events, m, n):
+    """
+    Compute the symmetric cumulant SC(m, n).
+
+    """
+    M = np.asarray(events['M'], dtype=float)
+    Q = dict(enumerate(events['Qn'].T, start=1))
+
+    cm2n2 = (
+        csq(Q[m]) * csq(Q[n])
+        - 2*(Q[m+n] * Q[m].conj() * Q[n].conj()).real
+        - 2*(Q[m] * Q[m-n].conj() * Q[n].conj()).real
+        + csq(Q[m+n]) + csq(Q[m-n])
+        - (M - 4)*(csq(Q[m]) + csq(Q[n]))
+        + M*(M - 6)
+    ).sum() / (M*(M - 1)*(M - 2)*(M - 3)).sum()
+
+    cm2 = corr2(Q[m], M)
+    cn2 = corr2(Q[n], M)
+
+    return cm2n2 - cm2*cn2
+
+
 # fully specify numeric data types, including endianness and size, to
 # ensure consistency across all machines
 float_t = '<f8'
@@ -93,6 +134,10 @@ class ModelData:
                     events['M'], *events['Qn'].T[1:]
                 ).flow(n, 2, imaginary='zero')
 
+            if obs.startswith('sc'):
+                mn = obs_stack.pop()
+                return lambda events: symmetric_cumulant(events, *mn)
+
         compute_bin = _compute_bin()
 
         def compute_all_bins(events):
@@ -147,17 +192,23 @@ def observables(system, map_point=False):
         '_map' if map_point else ''
     )
 
+    data = expt.data[system]
+
     # identified particle data are not yet available for PbPb5020
     # create dummy entries for these observables so that they are computed for
     # the model
     if system == 'PbPb5020':
-        system_data = expt.data[system].copy()
-        for obs in ['dN_dy', 'mean_pT']:
-            system_data[obs] = expt.data['PbPb2760'][obs]
-    else:
-        system_data = expt.data[system]
+        data = dict(
+            ((obs, expt.data['PbPb2760'][obs])
+             for obs in ['dN_dy', 'mean_pT']),
+            **data
+        )
 
-    data = ModelData(*files).observables_like(system_data)
+    # also compute "extra" data for the MAP point
+    if map_point:
+        data = dict(expt.extra_data[system], **data)
+
+    data = ModelData(*files).observables_like(data)
 
     logging.info('writing cache file %s', cachefile)
     cachefile.parent.mkdir(exist_ok=True)

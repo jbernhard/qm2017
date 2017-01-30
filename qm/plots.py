@@ -476,6 +476,68 @@ def etas_estimate():
     ]), loc='upper left')
 
 
+@plot
+def flow_corr():
+    """
+    Symmetric cumulants SC(m, n) at the MAP point compared to experiment.
+
+    """
+    plots, width_ratios = zip(*[
+        (('sc_central', 9e-8), 2),
+        (('sc', 2.8e-6), 3),
+    ])
+
+    fig, axes = plt.subplots(
+        figsize=(textwidth, .4*textwidth),
+        ncols=len(plots), gridspec_kw=dict(width_ratios=width_ratios)
+    )
+
+    sys = 'PbPb2760'
+    labelfmt = r'$\mathrm{{SC}}({}, {})$'
+
+    for (obs, ylim), ax in zip(plots, axes):
+        for mn, cmap in [
+                ((4, 2), 'Blues'),
+                ((3, 2), 'Oranges'),
+        ]:
+            color = getattr(plt.cm, cmap)(.7)
+
+            x = model.map_data[sys][obs][mn]['x']
+            y = model.map_data[sys][obs][mn]['Y']
+
+            ax.plot(x, y, color=color, lw=.75, label=labelfmt.format(*mn))
+
+            x = expt.extra_data[sys][obs][mn]['x']
+            y = expt.extra_data[sys][obs][mn]['y']
+            yerr = expt.extra_data[sys][obs][mn]['yerr']
+
+            ax.errorbar(
+                x, y, yerr=yerr['stat'],
+                fmt='o', ms=2, capsize=0, color='.25', zorder=100
+            )
+
+            ax.fill_between(
+                x, y - yerr['sys'], y + yerr['sys'],
+                color='.9', zorder=-10
+            )
+
+        ax.axhline(
+            0, color='.75', lw=plt.rcParams['xtick.major.width'],
+            zorder=-100
+        )
+
+        ax.set_xlabel('Centrality %')
+        ax.set_ylim(-ylim, ylim)
+
+        auto_ticks(ax, 'y', nbins=6, minor=2)
+        ax.ticklabel_format(scilimits=(-5, 5))
+
+        if ax.is_first_col():
+            ax.set_ylabel(labelfmt.format('m', 'n'))
+        else:
+            ax.legend(loc='upper left')
+
+
 if __name__ == '__main__':
     import argparse
 

@@ -95,8 +95,18 @@ class HEPData:
 
         for v in self.y(name, **quals):
             y.append(v['value'])
-            for e in v['errors']:
-                yerr[e.get('label', 'sum')].append(e['symerror'])
+            for err in v['errors']:
+                try:
+                    e = err['symerror']
+                except KeyError:
+                    e = err['asymerror']
+                    if abs(e['plus']) != abs(e['minus']):
+                        raise RuntimeError(
+                            'asymmetric errors are not implemented'
+                        )
+                    e = abs(e['plus'])
+
+                yerr[err.get('label', 'sum')].append(e)
 
         return dict(
             y=np.array(y),
@@ -105,7 +115,11 @@ class HEPData:
         )
 
 
-def get_all_data():
+def get_calibration_data():
+    """
+    Experimental data for model calibration.
+
+    """
     data = {s: {} for s in systems}
 
     # PbPb2760 and PbPb5020 dNch/deta
@@ -159,7 +173,38 @@ def get_all_data():
     return data
 
 
-data = get_all_data()
+data = get_calibration_data()
+
+
+def get_extra_data():
+    """
+    Experimental data for model verification.  These observables require many
+    more model events to compute and thus are not useful for calibration.
+
+    """
+    data = {s: {} for s in systems}
+
+    data['PbPb2760']
+
+    # PbPb2760 flow correlations
+    system = 'PbPb2760'
+
+    d = HEPData(1452590, 1)
+    data[system]['sc'] = {
+        mn: d.dataset('SC({},{})'.format(*mn))
+        for mn in [(3, 2), (4, 2)]
+    }
+
+    d = HEPData(1452590, 3)
+    data[system]['sc_central'] = {
+        mn: d.dataset('SC({},{})'.format(*mn))
+        for mn in [(3, 2), (4, 2)]
+    }
+
+    return data
+
+
+extra_data = get_extra_data()
 
 
 def cov(x, y, yerr, stat_frac=1e-4, sys_corr_length=100, **kwargs):
@@ -205,3 +250,4 @@ def print_data(d, indent=0):
 
 if __name__ == '__main__':
     print_data(data)
+    print_data(extra_data)
