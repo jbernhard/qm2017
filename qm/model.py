@@ -1,6 +1,7 @@
 """ model output """
 
 import logging
+from pathlib import Path
 import pickle
 
 from hic import flow
@@ -105,23 +106,26 @@ class ModelData:
 
         return dict(
             x=x, cent=cent,
-            Y=np.array(list(map(compute_all_bins, self.events)))
+            Y=np.array(list(map(compute_all_bins, self.events))).squeeze()
         )
 
 
-def observables(system):
+def observables(system, map_point=False):
     """
     Compute model observables for the given system to match the corresponding
     experimental data.
 
     """
-    # expected filenames for each design point
-    files = [
-        workdir / 'model_output' / system / '{}.dat'.format(p)
-        for p in Design(system).points
-    ]
+    if map_point:
+        files = [Path('map', system)]
+        cachefile = Path(system + '_map')
+    else:
+        # expected filenames for each design point
+        files = [Path(system, p) for p in Design(system).points]
+        cachefile = Path(system)
 
-    cachefile = cachedir / 'model' / '{}.pkl'.format(system)
+    files = [workdir / 'model_output' / f.with_suffix('.dat') for f in files]
+    cachefile = cachedir / 'model' / cachefile.with_suffix('.pkl')
 
     if cachefile.exists():
         # use the cache unless any of the model data files are newer
@@ -130,14 +134,18 @@ def observables(system):
         # to force recomputation, delete the cache file
         mtime = cachefile.stat().st_mtime
         if all(f.stat().st_mtime < mtime for f in files):
-            logging.debug('loading %s observables from cache', system)
+            logging.debug('loading observables cache file %s', cachefile)
             return joblib.load(cachefile)
         else:
-            logging.debug('%s cache file is older than event data', system)
+            logging.debug('cache file %s is older than event data', cachefile)
     else:
-        logging.debug('%s cache file does not exist', system)
+        logging.debug('cache file %s does not exist', cachefile)
 
-    logging.info('loading %s event data and computing observables', system)
+    logging.info(
+        'loading %s%s event data and computing observables',
+        system,
+        '_map' if map_point else ''
+    )
 
     # identified particle data are not yet available for PbPb5020
     # create dummy entries for these observables so that they are computed for
@@ -159,8 +167,12 @@ def observables(system):
 
 
 data = {s: observables(s) for s in systems}
+map_data = {s: observables(s, map_point=True) for s in systems}
 
 
 if __name__ == '__main__':
     from pprint import pprint
+    print('design:')
     pprint(data)
+    print('map:')
+    pprint(map_data)

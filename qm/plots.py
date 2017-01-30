@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from matplotlib import ticker
 
 from . import workdir, systems, expt, model, mcmc
-from .emulator import emulators
 
 
 fontsmall, fontnormal, fontlarge = 5, 6, 7
@@ -284,29 +283,12 @@ def observables_map():
         ax = fig.add_subplot(gs[nrow:nrow+2, nplot])
         ratio_ax = fig.add_subplot(gs[nrow+2, nplot])
 
-        # predict what this will look like before running events
-        Y = emulators[system].predict([[
-            15.0 if system == 'PbPb2760' else 21.,  # norm
-            0.0,    # trento_p
-            1.0,    # fluct_std
-            0.9,    # nucleon_width
-            1.5,    # dmin3
-            0.6,    # tau_fs
-            0.2,    # etas_hrg
-            0.06,   # etas_min
-            2.2,    # etas_slope
-            -0.4,   # etas_curv
-            0.015,  # zetas_max
-            0.01,   # zetas_width
-            0.150,  # Tswitch
-        ]])
-
         for obs, subobs, label, cmap in subplots:
             factor = 5 if obs == 'dNch_deta' else 1
             color = getattr(plt.cm, cmap)(.6)
 
-            x = model.data[system][obs][subobs]['x']
-            y = Y[obs][subobs].ravel() * factor
+            x = model.map_data[system][obs][subobs]['x']
+            y = model.map_data[system][obs][subobs]['Y'] * factor
 
             ax.plot(x, y, color=color, lw=.5)
 
