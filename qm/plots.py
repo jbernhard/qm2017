@@ -363,6 +363,10 @@ def format_ci(samples, ci=.9):
 
 @plot
 def posterior():
+    """
+    Triangle plot of posterior marginal and joint distributions.
+
+    """
     chain = mcmc.Chain()
     data = chain.load().T
 
@@ -424,6 +428,10 @@ def posterior():
 
 @plot
 def etas_estimate():
+    """
+    Estimate of the temperature dependence of shear viscosity eta/s.
+
+    """
     plt.figure(figsize=(.75*textwidth, .75*aspect*textwidth))
     ax = plt.axes()
 
@@ -478,6 +486,10 @@ def etas_estimate():
 
 @plot
 def zetas_estimate():
+    """
+    Estimate of the temperature dependence of bulk viscosity zeta/s.
+
+    """
     plt.figure(figsize=(.6*textwidth, .6*aspect*textwidth))
     ax = plt.axes()
 
