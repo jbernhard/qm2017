@@ -1,5 +1,6 @@
 """ plots / visualizations / figures """
 
+import colorsys
 import itertools
 import logging
 from pathlib import Path
@@ -10,7 +11,17 @@ from matplotlib import patches
 from matplotlib import ticker
 from scipy.interpolate import PchipInterpolator
 
-from . import workdir, systems, expt, model, mcmc
+from . import workdir, systems, parse_system, expt, model, mcmc
+
+
+def darken(rgba, amount=.5):
+    h, l, s = colorsys.rgb_to_hls(*rgba[:3])
+    r, g, b = colorsys.hls_to_rgb(h, l*amount, s)
+
+    try:
+        return r, g, b, rgba[3]
+    except IndexError:
+        return r, g, b
 
 
 fontsmall, fontnormal, fontlarge = 5, 6, 7
@@ -224,6 +235,13 @@ def _observables(posterior=False):
             for y in Y * factor:
                 ax.plot(x, y, color=color, alpha=.08, lw=.3)
 
+            ax.text(
+                x[-1] + 2.5,
+                model.map_data[system][obs][subobs]['Y'][-1] * factor,
+                label,
+                color=darken(color), ha='left', va='center'
+            )
+
             try:
                 dset = expt.data[system][obs][subobs]
             except KeyError:
@@ -251,10 +269,18 @@ def _observables(posterior=False):
         elif ax.is_last_row():
             ax.set_xlabel('Centrality %')
 
+        if ax.is_last_col():
+            proj, energy = parse_system(system)
+            ax.text(
+                1.07, .5, '{} {:.2f} TeV'.format('+'.join(proj), energy/1000),
+                transform=ax.transAxes, ha='left', va='center',
+                size=plt.rcParams['axes.titlesize'], rotation=-90
+            )
+
         ax.set_ylabel(ylabel)
         ax.set_ylim(ylim)
 
-    set_tight(fig, w_pad=-.2)
+    set_tight(fig, w_pad=1, rect=[0, 0, .97, 1])
 
 
 @plot
@@ -294,6 +320,13 @@ def observables_map():
 
             ax.plot(x, y, color=color, lw=.5)
 
+            ax.text(
+                x[-1] + 2.5,
+                model.map_data[system][obs][subobs]['Y'][-1] * factor,
+                label,
+                color=darken(color), ha='left', va='center'
+            )
+
             try:
                 dset = expt.data[system][obs][subobs]
             except KeyError:
@@ -323,6 +356,14 @@ def observables_map():
         elif ratio_ax.is_last_row():
             ratio_ax.set_xlabel('Centrality %')
 
+        if ax.is_last_col():
+            proj, energy = parse_system(system)
+            ax.text(
+                1.07, 0, '{} {:.2f} TeV'.format('+'.join(proj), energy/1000),
+                transform=ax.transAxes, ha='left', va='bottom',
+                size=plt.rcParams['axes.titlesize'], rotation=-90
+            )
+
         ax.set_ylabel(ylabel)
         ax.set_ylim(ylim)
 
@@ -332,6 +373,8 @@ def observables_map():
         ratio_ax.set_ylim(0.8, 1.2)
         ratio_ax.set_yticks(np.arange(80, 121, 10)/100)
         ratio_ax.set_ylabel('Ratio')
+
+    set_tight(fig, w_pad=1, rect=[0, 0, .97, 1])
 
 
 def format_ci(samples, ci=.9):

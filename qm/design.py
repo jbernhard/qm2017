@@ -7,7 +7,7 @@ import subprocess
 
 import numpy as np
 
-from . import cachedir
+from . import cachedir, parse_system
 
 
 def generate_lhs(npoints, ndim, seed):
@@ -57,10 +57,7 @@ class Design:
     def __init__(self, system, npoints=500, seed=90674172):
         self.system = system
 
-        # extract projectiles and beamy energy from system string
-        match = re.fullmatch('([A-Z]?[a-z])([A-Z]?[a-z])([0-9]+)', self.system)
-        self.projectiles = match.group(1, 2)
-        self.beam_energy = int(match.group(3))
+        self.projectiles, self.beam_energy = parse_system(system)
 
         # 5.02 TeV has ~1.2x particle production as 2.76 TeV
         # [https://inspirehep.net/record/1410589]
