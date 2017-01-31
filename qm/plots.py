@@ -516,7 +516,7 @@ def posterior_withnorm():
 
 
 @plot
-def posterior_etas():
+def posterior_shear():
     _posterior(
         scale=.45, padt=.97, padr=1.,
         params={'etas_min', 'etas_slope', 'etas_curv'}
@@ -524,7 +524,7 @@ def posterior_etas():
 
 
 @plot
-def posterior_zetas():
+def posterior_bulk():
     _posterior(
         scale=.33, padt=.96, padr=1.,
         params={'zetas_max', 'zetas_width'}
@@ -597,7 +597,7 @@ def posterior_p():
 
 
 @plot
-def etas_estimate():
+def region_shear():
     """
     Estimate of the temperature dependence of shear viscosity eta/s.
 
@@ -655,7 +655,7 @@ def etas_estimate():
 
 
 @plot
-def zetas_estimate():
+def region_bulk():
     """
     Estimate of the temperature dependence of bulk viscosity zeta/s.
 
