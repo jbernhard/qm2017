@@ -602,7 +602,7 @@ def region_shear():
     Estimate of the temperature dependence of shear viscosity eta/s.
 
     """
-    plt.figure(figsize=(.75*textwidth, .75*aspect*textwidth))
+    plt.figure(figsize=(.7*textwidth, .7*aspect*textwidth))
     ax = plt.axes()
 
     Tc = .154
@@ -651,7 +651,7 @@ def region_shear():
         (prior, 'Prior range'),
         (median, 'Posterior median'),
         (band, '90% CR'),
-    ]), loc='upper left')
+    ]), loc='upper left', bbox_to_anchor=(0, 1.03))
 
 
 @plot
