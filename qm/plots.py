@@ -334,13 +334,17 @@ def observables_map():
 
             x = dset['x']
             yexp = dset['y'] * factor
-            yerr = np.sqrt(sum(
-                e**2 for e in dset['yerr'].values()
-            )) * factor
+            yerr = dset['yerr']
 
             ax.errorbar(
-                x, yexp, yerr=yerr, fmt='o', ms=1.7,
+                x, yexp, yerr=yerr.get('stat'), fmt='o', ms=1.7,
                 capsize=0, color='.25', zorder=1000
+            )
+
+            yerrsys = yerr.get('sys', yerr.get('sum'))
+            ax.fill_between(
+                x, yexp - yerrsys, yexp + yerrsys,
+                color='.9', zorder=-10
             )
 
             ratio_ax.plot(x, y/yexp, color=color)
@@ -369,6 +373,12 @@ def observables_map():
 
         ratio_ax.axhline(1, lw=.5, color='0.5', zorder=-100)
         ratio_ax.axhspan(0.9, 1.1, color='0.95', zorder=-200)
+        ratio_ax.text(
+            ratio_ax.get_xlim()[1], .9, '±10%',
+            color='.6', zorder=-50,
+            ha='right', va='bottom',
+            size=plt.rcParams['xtick.labelsize']
+        )
 
         ratio_ax.set_ylim(0.8, 1.2)
         ratio_ax.set_yticks(np.arange(80, 121, 10)/100)
