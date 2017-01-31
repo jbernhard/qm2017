@@ -596,8 +596,7 @@ def posterior_p():
     set_tight(pad=0)
 
 
-@plot
-def region_shear():
+def _region_shear(empty=False):
     """
     Estimate of the temperature dependence of shear viscosity eta/s.
 
@@ -622,6 +621,18 @@ def region_shear():
         color='.92'
     )
 
+    ax.set_xlim(xmin=.15)
+    ax.set_ylim(0, .6)
+    ax.set_xticks(np.arange(150, 301, 50)/1000)
+    ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    auto_ticks(ax, 'y', minor=2)
+
+    ax.set_xlabel('Temperature [GeV]')
+    ax.set_ylabel(r'$\eta/s$')
+
+    if empty:
+        return
+
     eparams = chain.load(*ekeys).T
     intervals = np.array([
         mcmc.credible_interval(etas(t, *eparams))
@@ -638,15 +649,6 @@ def region_shear():
         color=plt.cm.Blues(.77)
     )
 
-    ax.set_xlim(xmin=.146)
-    ax.set_ylim(0, .6)
-    ax.set_xticks(np.arange(150, 301, 50)/1000)
-    ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(2))
-    auto_ticks(ax, 'y', minor=2)
-
-    ax.set_xlabel('Temperature [GeV]')
-    ax.set_ylabel(r'$\eta/s$')
-
     ax.legend(*zip(*[
         (prior, 'Prior range'),
         (median, 'Posterior median'),
@@ -655,7 +657,16 @@ def region_shear():
 
 
 @plot
-def region_bulk():
+def region_shear():
+    _region_shear()
+
+
+@plot
+def region_shear_empty():
+    _region_shear(empty=True)
+
+
+def _region_bulk(empty=False):
     """
     Estimate of the temperature dependence of bulk viscosity zeta/s.
 
@@ -683,6 +694,16 @@ def region_bulk():
         color='.92', zorder=-100
     )
 
+    ax.set_xlim(T[0], T[-1])
+    ax.set_ylim(0, 1.05*maxdict['zetas_max'])
+    auto_ticks(ax, minor=2)
+
+    ax.set_xlabel('Temperature [GeV]')
+    ax.set_ylabel(r'$\zeta/s$')
+
+    if empty:
+        return
+
     # use a Gaussian mixture model to classify zeta/s parameters
     samples = chain.load(*keys, thin=10)
     gmm = GaussianMixture(n_components=3, covariance_type='full').fit(samples)
@@ -707,14 +728,17 @@ def region_bulk():
         ax.plot(T, curve, color=color, zorder=-10)
         ax.fill_between(T, curve, color=color, alpha=.1, zorder=-20)
 
-    ax.set_xlim(T[0], T[-1])
-    ax.set_ylim(0, 1.05*maxdict['zetas_max'])
-    auto_ticks(ax, minor=2)
-
-    ax.set_xlabel('Temperature [GeV]')
-    ax.set_ylabel(r'$\zeta/s$')
-
     ax.legend(loc='upper left')
+
+
+@plot
+def region_bulk():
+    _region_bulk()
+
+
+@plot
+def region_bulk_empty():
+    _region_bulk(empty=True)
 
 
 @plot
