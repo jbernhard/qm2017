@@ -11,6 +11,7 @@ from matplotlib import lines
 from matplotlib import patches
 from matplotlib import ticker
 from scipy.interpolate import PchipInterpolator
+from sklearn.mixture import GaussianMixture
 
 from . import workdir, systems, parse_system, expt, model, mcmc
 
@@ -674,33 +675,37 @@ def zetas_estimate():
         if i[0].startswith('zetas')
     )))
 
-    T0 = .5*Tc
-    T1 = .95*Tc
-    T2 = 2*Tc - T1
-    T3 = 2*Tc - T0
-
-    # higher density of points near Tc needed to resolve peak
-    T = np.concatenate([
-        np.linspace(T0, T1, 50, endpoint=False),
-        np.linspace(T1, T2, 100, endpoint=False),
-        np.linspace(T2, T3, 50, endpoint=True),
-    ])
+    T = Tc*np.linspace(.5, 1.5, 1000)
 
     maxdict = {k: r[1] for k, r in zip(keys, ranges)}
-    prior = ax.fill_between(T, zetas(T, **maxdict), color='.92')
-
-    params = dict(zip(keys, chain.load(*keys).T))
-    intervals = np.array([
-        mcmc.credible_interval(zetas(t, **params))
-        for t in T
-    ]).T
-
-    band = ax.fill_between(T, *intervals, color=plt.cm.Blues(.32))
-
-    median, = ax.plot(
-        T, zetas(T, **{k: np.median(p) for k, p in params.items()}),
-        color=plt.cm.Blues(.77)
+    ax.fill_between(
+        T, zetas(T, **maxdict), label='Prior range',
+        color='.92', zorder=-100
     )
+
+    # use a Gaussian mixture model to classify zeta/s parameters
+    samples = chain.load(*keys, thin=10)
+    gmm = GaussianMixture(n_components=3, covariance_type='full').fit(samples)
+    labels = gmm.predict(samples)
+
+    for n in range(gmm.n_components):
+        params = dict(zip(
+            keys,
+            (mcmc.credible_interval(s)[1] for s in samples[labels == n].T)
+        ))
+
+        if params['zetas_max'] > .05:
+            cmap = 'Blues'
+        elif params['zetas_width'] > .03:
+            cmap = 'Greens'
+        else:
+            cmap = 'Oranges'
+
+        curve = zetas(T, **params)
+        color = getattr(plt.cm, cmap)(.65)
+
+        ax.plot(T, curve, color=color, zorder=-10)
+        ax.fill_between(T, curve, color=color, alpha=.1, zorder=-20)
 
     ax.set_xlim(T[0], T[-1])
     ax.set_ylim(0, 1.05*maxdict['zetas_max'])
@@ -709,11 +714,7 @@ def zetas_estimate():
     ax.set_xlabel('Temperature [GeV]')
     ax.set_ylabel(r'$\zeta/s$')
 
-    ax.legend(*zip(*[
-        (prior, 'Prior range'),
-        (median, 'Posterior median'),
-        (band, '90% CR'),
-    ]), loc='upper left')
+    ax.legend(loc='upper left')
 
 
 @plot
