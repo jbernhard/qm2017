@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import lines
 from matplotlib import patches
 from matplotlib import ticker
 from scipy.interpolate import PchipInterpolator
@@ -722,29 +723,63 @@ def flow_corr():
 
     """
     plots, width_ratios = zip(*[
-        (('sc_central', 9e-8), 2),
-        (('sc', 2.8e-6), 3),
+        (('sc_central', 1e-7), 2),
+        (('sc', 2.9e-6), 3),
     ])
 
+    def label(*mn):
+        return r'$\mathrm{{SC}}({}, {})$'.format(*mn)
+
     fig, axes = plt.subplots(
-        figsize=(textwidth, .4*textwidth),
+        figsize=(textwidth, .42*textwidth),
         ncols=len(plots), gridspec_kw=dict(width_ratios=width_ratios)
     )
 
-    sys = 'PbPb2760'
-    labelfmt = r'$\mathrm{{SC}}({}, {})$'
+    cmapx_normal = .7
+    cmapx_pred = .5
+    dashes_pred = [3, 2]
 
     for (obs, ylim), ax in zip(plots, axes):
-        for mn, cmap in [
-                ((4, 2), 'Blues'),
-                ((3, 2), 'Oranges'),
-        ]:
-            color = getattr(plt.cm, cmap)(.7)
-
+        for (mn, cmap), sys in itertools.product(
+                [
+                    ((4, 2), 'Blues'),
+                    ((3, 2), 'Oranges'),
+                ],
+                systems
+        ):
             x = model.map_data[sys][obs][mn]['x']
             y = model.map_data[sys][obs][mn]['Y']
 
-            ax.plot(x, y, color=color, lw=.75, label=labelfmt.format(*mn))
+            pred = obs not in expt.extra_data[sys]
+            cmapx = cmapx_pred if pred else cmapx_normal
+
+            kwargs = {}
+
+            if pred:
+                kwargs.update(dashes=dashes_pred)
+
+            if ax.is_last_col():
+                if not pred:
+                    kwargs.update(label=label(*mn))
+            else:
+                fmt = '{:.2f} TeV'
+                if pred:
+                    fmt += ' (prediction)'
+                lbl = fmt.format(parse_system(sys)[1]/1000)
+                if not any(l.get_label() == lbl for l in ax.get_lines()):
+                    ax.add_line(lines.Line2D(
+                        [], [], color=plt.cm.Greys(cmapx),
+                        label=lbl, **kwargs
+                    ))
+
+            ax.plot(
+                x, y, lw=.75,
+                color=getattr(plt.cm, cmap)(cmapx),
+                **kwargs
+            )
+
+            if pred:
+                continue
 
             x = expt.extra_data[sys][obs][mn]['x']
             y = expt.extra_data[sys][obs][mn]['y']
@@ -772,9 +807,14 @@ def flow_corr():
         ax.ticklabel_format(scilimits=(-5, 5))
 
         if ax.is_first_col():
-            ax.set_ylabel(labelfmt.format('m', 'n'))
-        else:
-            ax.legend(loc='upper left')
+            ax.set_ylabel(label('m', 'n'))
+
+        ax.legend(loc='upper left')
+
+        ax.set_title(dict(
+            sc_central='Most central collisions',
+            sc='Minimum bias'
+        )[obs])
 
 
 if __name__ == '__main__':

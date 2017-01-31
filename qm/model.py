@@ -207,6 +207,14 @@ def observables(system, map_point=False):
     # also compute "extra" data for the MAP point
     if map_point:
         data = dict(expt.extra_data[system], **data)
+        # flow correlations not yet available for PbPb5020
+        if system == 'PbPb5020':
+            data = dict(
+                ((obs, expt.extra_data['PbPb2760'][obs])
+                for obs in ['sc', 'sc_central']),
+                **data
+            )
+
 
     data = ModelData(*files).observables_like(data)
 
