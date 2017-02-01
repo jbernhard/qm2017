@@ -1,0 +1,183 @@
+\documentclass{beamer}
+
+\definecolor{theme}{RGB}{6,47,80}
+\definecolor{accent}{RGB}{231,83,69}
+\definecolor{offblack}{HTML}{262626}
+\setbeamercolor{normal text}{fg=offblack}
+
+\usecolortheme[named=theme]{structure}
+\usecolortheme{rose}  % inner
+\usecolortheme{dolphin}  % outer
+
+% modified version of default frametitle with horizontal separation line
+\makeatletter
+\setbeamertemplate{frametitle}{
+  \ifbeamercolorempty[bg]{frametitle}{}{\nointerlineskip}%
+  \@tempdima=\textwidth%
+  \advance\@tempdima by\beamer@leftmargin%
+  \advance\@tempdima by\beamer@rightmargin%
+  \begin{beamercolorbox}[sep=0.3cm,left,wd=\the\@tempdima]{frametitle}
+    \usebeamerfont{frametitle}%
+    \vbox{}\vskip-2ex%
+    \if@tempswa\else\csname beamer@fteleft\endcsname\fi%
+    \strut\insertframetitle\strut\par%
+    {%
+      \ifx\insertframesubtitle\@empty%
+      \else%
+      {\usebeamerfont{framesubtitle}\usebeamercolor[fg]{framesubtitle}\insertframesubtitle\strut\par}%
+      \fi
+    }%
+    \vskip.45ex%
+    \hrule %height .6pt%
+    \vskip-1.45ex%
+    \if@tempswa\else\vskip-.3cm\fi%
+  \end{beamercolorbox}%
+}
+\makeatother
+
+% clean up footer
+\beamertemplatenavigationsymbolsempty
+\defbeamertemplate{footline}{custom footline}{
+  \usebeamercolor[fg]{page number in head/foot}
+  \usebeamerfont{page number in head/foot}
+  \quad
+  \insertshortauthor\enskip(\insertshortinstitute)
+  \hfill
+  \insertshorttitle
+  \hfill
+  \insertframenumber\,/\,\inserttotalframenumber\kern1em\vskip2pt
+}
+\setbeamertemplate{footline}[custom footline]
+
+\useinnertheme{default}
+\setbeamertemplate{itemize item}{\raise.35ex\hbox{\vrule width .7ex height .7ex}}
+\setbeamertemplate{itemize subitem}{\raise.35ex\hbox{\vrule width .6ex height .6ex}}
+
+% for backup slides
+\usepackage{appendixnumberbeamer}
+\renewcommand\appendixname{Backup}
+
+\usepackage{graphicx}
+\graphicspath{{../plots/}}
+
+\usepackage{amsmath}
+\usepackage{setspace}
+
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usetikzlibrary{positioning}
+\usetikzlibrary{overlay-beamer-styles}
+
+\usepackage[T1]{fontenc}
+% main font
+\usepackage[default]{lato}
+% improves consistency of Greek letters in math mode
+\usepackage{newtxsf}
+
+% alternate font
+\usepackage[nosfdefault]{raleway}
+% set as the default rm font [even though it really isn't roman]
+\renewcommand*\rmdefault{Raleway-TLF}
+% and use as the frame title font
+\setbeamerfont{frametitle}{family=\rm}
+
+\newcommand{\es}{(\eta/s)}
+\newcommand{\zs}{(\zeta/s)}
+
+\title[Bayesian characterization of the initial state and QGP medium]{
+  Characterization of the initial state and QGP medium from a combined Bayesian analysis of LHC data at 2.76 and 5.02 TeV
+}
+\author[J.\ E.\ Bernhard]{Jonah E.\ Bernhard \\ J.\ Scott Moreland, Steffen A.\ Bass}
+\institute[Duke U.]{Duke University}
+\date{Tuesday 7 February 2017}
+
+
+\begin{document}
+
+
+\section{Title}
+
+\begin{frame}[plain,noframenumbering]
+  \rm\fontseries{l}
+  \centering
+  \setstretch{1.4}
+  \vspace{.15\textheight}
+  {\color{theme}\Large\inserttitle} \\[.05\textheight]
+  \insertauthor \\[.1\textheight]
+  \includegraphics[height=.1\textheight]{logos/dukeqcd}
+  \hspace{.08\textwidth}
+  \includegraphics[height=.1\textheight]{logos/qm2017}
+\end{frame}
+
+
+\section{Introduction}
+
+\begin{frame}{The goal}
+\end{frame}
+
+\tikzset{
+  box/.style={
+    align=center,
+    inner sep=1ex,
+    background default fill=black!10,
+    background default text=black!30,
+    background fill=theme!15,
+    background text=theme,
+    fill on=<{1,#1}>,
+    text on=<{1,#1}>
+  }
+}
+
+\newcommand{\boxtitle}[1]{\textbf{#1}\\[.5ex]}
+
+\begin{frame}<1>[label=flowchart]{Overview}
+  \vspace{1em}
+  \makebox[\textwidth]{
+  \begin{tikzpicture}
+    \node[box=3] (input) at (4.5, 6) {
+      \boxtitle{Input parameters}
+      QGP properties
+    };
+    \node[box=2] (model) at (8, 4) {
+      \boxtitle{Model}
+      heavy-ion collision \\
+      spacetime evolution
+    };
+    \node[box=4] (gp) at (1.5, 4) {
+      \boxtitle{Gaussian process emulator}
+      surrogate model
+    };
+    \node[box=5] (mcmc) at (3.5, 2) {
+      \boxtitle{MCMC}
+      calibrate model to data
+    };
+    \node[box=6] (posterior) at (8, .5) {
+      \boxtitle{Posterior distribution}
+      quantitative estimates \\
+      of each parameter
+    };
+    \node[box=3] (exp) at (.5, .3) {
+      \boxtitle{Experimental data}
+      LHC Pb-Pb collisions
+    };
+    \begin{scope}[color=black!70, ->, semithick]
+      \draw (input) -| (model);
+      \draw (model) -- (gp);
+      \draw (input) -| (gp);
+      \draw
+        let \p1 = (gp.south), \p2 = (mcmc.north), \p3 = ($(\p1)!.5!(\p2)$) in
+        (\p1) -- (\x1, \y3)  -| (\p2);
+      \draw (exp) |- (mcmc);
+      \draw (mcmc) -| (posterior);
+    \end{scope}
+  \end{tikzpicture}
+  }
+\end{frame}
+
+
+\section{Method}
+
+\againframe<2>{flowchart}
+
+
+\end{document}
