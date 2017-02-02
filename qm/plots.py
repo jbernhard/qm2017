@@ -4,16 +4,23 @@ import colorsys
 import itertools
 import logging
 from pathlib import Path
+import subprocess
+import tempfile
+import warnings
 
+import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import lines
 from matplotlib import patches
 from matplotlib import ticker
 from scipy.interpolate import PchipInterpolator
+from sklearn.gaussian_process import GaussianProcessRegressor as GPR
+from sklearn.gaussian_process import kernels
 from sklearn.mixture import GaussianMixture
 
 from . import workdir, systems, parse_system, expt, model, mcmc
+from .design import Design
 
 
 def darken(rgba, amount=.5):
@@ -304,7 +311,7 @@ def observables_map():
     """
     plots = _observables_plots()
 
-    fig = plt.figure(figsize=(fullwidth, .75*fullwidth))
+    fig = plt.figure(figsize=(fullwidth, .85*fullheight))
     gs = plt.GridSpec(3*len(systems), len(plots))
 
     for (nsys, system), (nplot, (title, ylabel, ylim, subplots)) in \
@@ -383,7 +390,7 @@ def observables_map():
         )
 
         ratio_ax.set_ylim(0.8, 1.2)
-        ratio_ax.set_yticks(np.arange(80, 121, 10)/100)
+        ratio_ax.set_yticks(np.arange(80, 121, 20)/100)
         ratio_ax.set_ylabel('Ratio')
 
     set_tight(fig, w_pad=1, rect=[0, 0, .97, 1])
@@ -491,7 +498,11 @@ def _posterior(params=None, ignore=None, scale=1, padr=.99, padt=.98):
             ticklabels = getattr(ax, 'get_{}ticklabels'.format(xy))()
             for t in ticklabels:
                 t.set_fontsize(3)
-                if xy == 'x' and len(str(sum(ranges[n])/2)) > 4:
+                if (
+                        scale / ndim < .13 and
+                        xy == 'x' and
+                        len(str(sum(ranges[n])/2)) > 4
+                ):
                     t.set_rotation(30)
             if xy == 'x':
                 ticklabels[0].set_horizontalalignment('left')
@@ -518,7 +529,7 @@ def posterior_withnorm():
 @plot
 def posterior_shear():
     _posterior(
-        scale=.45, padt=.97, padr=1.,
+        scale=.35, padt=.96, padr=1.,
         params={'etas_min', 'etas_slope', 'etas_curv'}
     )
 
@@ -526,7 +537,7 @@ def posterior_shear():
 @plot
 def posterior_bulk():
     _posterior(
-        scale=.33, padt=.96, padr=1.,
+        scale=.3, padt=.96, padr=1.,
         params={'zetas_max', 'zetas_width'}
     )
 
@@ -596,15 +607,17 @@ def posterior_p():
     set_tight(pad=0)
 
 
-def _region_shear(empty=False):
+region_style = dict(color='.93', zorder=-100)
+Tc = .154
+
+
+def _region_shear(mode='full', scale=.6):
     """
     Estimate of the temperature dependence of shear viscosity eta/s.
 
     """
-    plt.figure(figsize=(.7*textwidth, .7*aspect*textwidth))
+    plt.figure(figsize=(scale*textwidth, scale*aspect*textwidth))
     ax = plt.axes()
-
-    Tc = .154
 
     def etas(T, m=0, s=0, c=0):
         return m + s*(T - Tc)*(T/Tc)**c
@@ -614,11 +627,11 @@ def _region_shear(empty=False):
     rangedict = dict(zip(chain.keys, chain.range))
     ekeys = ['etas_' + k for k in ['min', 'slope', 'curv']]
 
-    T = np.linspace(.154, .3, 50)
+    T = np.linspace(Tc, .3, 100)
 
     prior = ax.fill_between(
         T, etas(T, *(rangedict[k][1] for k in ekeys)),
-        color='.92'
+        **region_style
     )
 
     ax.set_xlim(xmin=.15)
@@ -630,7 +643,16 @@ def _region_shear(empty=False):
     ax.set_xlabel('Temperature [GeV]')
     ax.set_ylabel(r'$\eta/s$')
 
-    if empty:
+    if mode == 'empty':
+        return
+
+    if mode == 'examples':
+        for args in [
+                (.05, 1.0, -1),
+                (.10, 1.7, 0),
+                (.15, 2.0, 1),
+        ]:
+            ax.plot(T, etas(T, *args), color=plt.cm.Blues(.7))
         return
 
     eparams = chain.load(*ekeys).T
@@ -652,7 +674,7 @@ def _region_shear(empty=False):
     ax.legend(*zip(*[
         (prior, 'Prior range'),
         (median, 'Posterior median'),
-        (band, '90% CR'),
+        (band, '90% credible region'),
     ]), loc='upper left', bbox_to_anchor=(0, 1.03))
 
 
@@ -663,18 +685,21 @@ def region_shear():
 
 @plot
 def region_shear_empty():
-    _region_shear(empty=True)
+    _region_shear('empty')
 
 
-def _region_bulk(empty=False):
+@plot
+def region_shear_examples():
+    _region_shear('examples', scale=.5)
+
+
+def _region_bulk(mode='full', scale=.6):
     """
     Estimate of the temperature dependence of bulk viscosity zeta/s.
 
     """
-    plt.figure(figsize=(.6*textwidth, .6*aspect*textwidth))
+    plt.figure(figsize=(scale*textwidth, scale*aspect*textwidth))
     ax = plt.axes()
-
-    Tc = .154
 
     def zetas(T, zetas_max=0, zetas_width=1):
         return zetas_max / (1 + ((T - Tc)/zetas_width)**2)
@@ -690,8 +715,9 @@ def _region_bulk(empty=False):
 
     maxdict = {k: r[1] for k, r in zip(keys, ranges)}
     ax.fill_between(
-        T, zetas(T, **maxdict), label='Prior range',
-        color='.92', zorder=-100
+        T, zetas(T, **maxdict),
+        label='Prior range',
+        **region_style
     )
 
     ax.set_xlim(T[0], T[-1])
@@ -701,7 +727,16 @@ def _region_bulk(empty=False):
     ax.set_xlabel('Temperature [GeV]')
     ax.set_ylabel(r'$\zeta/s$')
 
-    if empty:
+    if mode == 'empty':
+        return
+
+    if mode == 'examples':
+        for args in [
+                (.025, .01),
+                (.050, .03),
+                (.075, .05),
+        ]:
+            ax.plot(T, zetas(T, *args), color=plt.cm.Blues(.7))
         return
 
     # use a Gaussian mixture model to classify zeta/s parameters
@@ -738,7 +773,12 @@ def region_bulk():
 
 @plot
 def region_bulk_empty():
-    _region_bulk(empty=True)
+    _region_bulk('empty')
+
+
+@plot
+def region_bulk_examples():
+    _region_bulk('examples', scale=.5)
 
 
 @plot
@@ -840,6 +880,148 @@ def flow_corr():
             sc_central='Most central collisions',
             sc='Minimum bias'
         )[obs])
+
+
+@plot
+def design():
+    """
+    Projection of a LH design into two dimensions.
+
+    """
+    fig = plt.figure(figsize=(.5*textwidth, .5*textwidth))
+    ratio = 5
+    gs = plt.GridSpec(ratio + 1, ratio + 1)
+
+    ax_j = fig.add_subplot(gs[1:, :-1])
+    ax_x = fig.add_subplot(gs[0, :-1], sharex=ax_j)
+    ax_y = fig.add_subplot(gs[1:, -1], sharey=ax_j)
+
+    d = Design(systems[0])
+
+    keys = ('etas_min', 'etas_slope')
+    indices = tuple(d.keys.index(k) for k in keys)
+
+    x, y = (d.array[:, i] for i in indices)
+    ax_j.plot(x, y, 'o', color=plt.cm.Blues(0.75), mec='white', mew=.3)
+
+    hist_kw = dict(bins=30, color=plt.cm.Blues(0.4), edgecolor='white', lw=.5)
+    ax_x.hist(x, **hist_kw)
+    ax_y.hist(y, orientation='horizontal', **hist_kw)
+
+    for ax in fig.axes:
+        ax.tick_params(top='off', right='off')
+        spines = ['top', 'right']
+        if ax is ax_x:
+            spines += ['left']
+        elif ax is ax_y:
+            spines += ['bottom']
+        for spine in spines:
+            ax.spines[spine].set_visible(False)
+        for ax_name in 'xaxis', 'yaxis':
+            getattr(ax, ax_name).set_ticks_position('none')
+
+    auto_ticks(ax_j)
+
+    for ax in ax_x, ax_y:
+        ax.tick_params(labelbottom='off', labelleft='off')
+
+    for i, xy in zip(indices, 'xy'):
+        for f, l in [('lim', d.range), ('label', d.labels)]:
+            getattr(ax_j, 'set_{}{}'.format(xy, f))(l[i])
+
+
+@plot
+def gp():
+    """
+    Conditioning a Gaussian process.
+
+    """
+    fig, axes = plt.subplots(
+        figsize=(.45*textwidth, .85*textheight),
+        nrows=2, sharex='col'
+    )
+
+    def dummy_optimizer(obj_func, initial_theta, bounds):
+        return initial_theta, 0.
+
+    gp = GPR(1.*kernels.RBF(.8), optimizer=dummy_optimizer)
+
+    def sample_y(*args, **kwargs):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return gp.sample_y(*args, **kwargs)
+
+    x = np.linspace(0, 5, 1000)
+    X = x[:, np.newaxis]
+
+    x_train = np.linspace(.5, 4.5, 4)
+    X_train = x_train[:, np.newaxis]
+
+    for title, ax in zip(['Random functions', 'Conditioned on data'], axes):
+        if title.startswith('Conditioned'):
+            y = sample_y(X_train, random_state=23158).squeeze()
+            y -= .5*(y.max() + y.min())
+            gp.fit(X_train, y)
+            training_data, = plt.plot(x_train, y, 'o', color='.3', zorder=50)
+
+        for s, c in zip(
+                sample_y(X, n_samples=4, random_state=34576).T,
+                ['Blues', 'Greens', 'Oranges', 'Purples']
+        ):
+            ax.plot(x, s, color=getattr(plt.cm, c)(.6))
+
+        mean, std = gp.predict(X, return_std=True)
+        std = ax.fill_between(x, mean - std, mean + std, color='.92')
+        mean, = ax.plot(x, mean, color='.42', dashes=(3.5, 1.5))
+
+        ax.set_ylim(-2, 2)
+        ax.set_ylabel('Output')
+        auto_ticks(ax)
+
+        ax.set_title(title, y=.9)
+
+    ax.set_xlabel('Input')
+    ax.legend(*zip(*[
+        (mean, 'Mean prediction'),
+        (std, 'Uncertainty'),
+        (training_data, 'Training data'),
+    ]), loc='lower left')
+
+    set_tight(fig, h_pad=1)
+
+
+@plot
+def trento_events():
+    """
+    Random trento events.
+
+    """
+    fig, axes = plt.subplots(
+        nrows=3, sharex='col',
+        figsize=(.28*textwidth, .85*textheight)
+    )
+
+    xymax = 8.
+    xyr = [-xymax, xymax]
+
+    with tempfile.NamedTemporaryFile(suffix='.hdf') as t:
+        subprocess.run((
+            'trento Pb Pb {} --quiet --b-max 12 '
+            '--grid-max {} --grid-step .1 '
+            '--random-seed 6347321 --output {}'
+        ).format(axes.size, xymax, t.name).split())
+
+        with h5py.File(t.name, 'r') as f:
+            for dset, ax in zip(f.values(), axes):
+                ax.pcolorfast(xyr, xyr, np.array(dset), cmap=plt.cm.Blues)
+                ax.set_aspect('equal')
+                for xy in ['x', 'y']:
+                    getattr(ax, 'set_{}ticks'.format(xy))([-5, 0, 5])
+
+    axes[-1].set_xlabel('$x$ [fm]')
+    axes[1].set_ylabel('$y$ [fm]')
+
+    set_tight(fig, h_pad=.5)
 
 
 if __name__ == '__main__':
