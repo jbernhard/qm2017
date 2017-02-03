@@ -15,6 +15,7 @@ from matplotlib import lines
 from matplotlib import patches
 from matplotlib import ticker
 from scipy.interpolate import PchipInterpolator
+from sklearn.decomposition import PCA
 from sklearn.gaussian_process import GaussianProcessRegressor as GPR
 from sklearn.gaussian_process import kernels
 from sklearn.mixture import GaussianMixture
@@ -378,7 +379,7 @@ def observables_map():
             )
 
         ax.set_ylabel(ylabel)
-        ax.set_ylim(ylim)
+        ax.set_ylim({'mean_pT': (0, 1.75), 'vn': (0, .12)}.get(obs, ylim))
 
         ratio_ax.axhline(1, lw=.5, color='0.5', zorder=-100)
         ratio_ax.axhspan(0.9, 1.1, color='0.95', zorder=-200)
@@ -898,13 +899,13 @@ def flow_extra():
         ncols=len(plots), gridspec_kw=dict(width_ratios=width_ratios)
     )
 
-    cmaps = {2: plt.cm.Blues, 3: plt.cm.Oranges}
+    cmaps = {2: plt.cm.GnBu, 3: plt.cm.Purples}
 
     for (obs, title, ylabel), ax in zip(plots, axes):
         for sys, (cmapx, dashes, fmt) in zip(
                 systems, [
                     (.7, (None, None), 'o'),
-                    (.5, (3, 2), 's'),
+                    (.6, (3, 2), 's'),
                 ]
         ):
             syslabel = '{:.2f} TeV'.format(parse_system(sys)[1]/1000)
@@ -1060,6 +1061,89 @@ def gp():
     ]), loc='lower left')
 
     set_tight(fig, h_pad=1)
+
+
+@plot
+def pca():
+    fig = plt.figure(figsize=(.45*textwidth, .45*textwidth))
+    ratio = 5
+    gs = plt.GridSpec(ratio + 1, ratio + 1)
+
+    ax_j = fig.add_subplot(gs[1:, :-1])
+    ax_x = fig.add_subplot(gs[0, :-1], sharex=ax_j)
+    ax_y = fig.add_subplot(gs[1:, -1], sharey=ax_j)
+
+    x, y = (
+        model.data['PbPb2760'][obs][subobs]['Y'][:, 3]
+        for obs, subobs in [('dN_dy', 'pion'), ('vn', 2)]
+    )
+    xlabel = r'$dN_{\pi^\pm}/dy$'
+    ylabel = r'$v_2\{2\}$'
+    xlim = 0, 1500
+    ylim = 0, 0.15
+
+    cmap = plt.cm.Blues
+
+    ax_j.plot(x, y, 'o', color=cmap(.75), mec='white', mew=.25, zorder=10)
+
+    for d, ax, orientation in [(x, ax_x, 'vertical'), (y, ax_y, 'horizontal')]:
+        ax.hist(
+            d, bins=20,
+            orientation=orientation, color=cmap(.4), edgecolor='white'
+        )
+
+    xy = np.column_stack([x, y])
+    xymean = xy.mean(axis=0)
+    xystd = xy.std(axis=0)
+    xy -= xymean
+    xy /= xystd
+    pca = PCA().fit(xy)
+    pc = (
+        7 * xystd *
+        pca.explained_variance_ratio_[:, np.newaxis] *
+        pca.components_
+    )
+
+    for w, p in zip(pca.explained_variance_ratio_, pc):
+        if np.all(p < 0):
+            p *= -1
+        ax_j.annotate(
+            '', xymean + p, xymean, zorder=20,
+            arrowprops=dict(
+                arrowstyle='->', shrinkA=0, shrinkB=0,
+                color=offblack, lw=.7
+            )
+        )
+        ax_j.text(
+            *(xymean + p + (.8, .002)*np.sign(p)), s='{:.0f}%'.format(100*w),
+            color=offblack, ha='center', va='top' if p[1] < 0 else 'bottom',
+            zorder=20
+        )
+
+    for ax in fig.axes:
+        ax.tick_params(top='off', right='off')
+        spines = ['top', 'right']
+        if ax is ax_x:
+            spines += ['left']
+        elif ax is ax_y:
+            spines += ['bottom']
+        for spine in spines:
+            ax.spines[spine].set_visible(False)
+        for ax_name in 'xaxis', 'yaxis':
+            getattr(ax, ax_name).set_ticks_position('none')
+
+    for ax in ax_x, ax_y:
+        ax.tick_params(labelbottom='off', labelleft='off')
+
+    auto_ticks(ax_j)
+
+    ax_j.set_xlim(xlim)
+    ax_j.set_ylim(ylim)
+
+    ax_j.set_xlabel(xlabel)
+    ax_j.set_ylabel(ylabel)
+
+    set_tight(pad=.1, h_pad=.3, w_pad=.3)
 
 
 @plot

@@ -50,8 +50,10 @@
 \setbeamertemplate{footline}[custom footline]
 
 \useinnertheme{default}
-\setbeamertemplate{itemize item}{\raise.35ex\hbox{\vrule width .7ex height .7ex}}
-\setbeamertemplate{itemize subitem}{\raise.35ex\hbox{\vrule width .6ex height .6ex}}
+
+\setbeamertemplate{itemize items}[circle]
+\setbeamercolor{itemize item}{fg=theme!60!white}
+\setbeamercolor{itemize subitem}{fg=theme!60!white}
 
 % for backup slides
 \usepackage{appendixnumberbeamer}
@@ -121,30 +123,24 @@
 
 \section{Introduction}
 
-\begin{frame}{The goal}
-  \begin{columns}
-    \column{.62\textwidth}
-    Quantitatively estimate properties of: \\[1ex]
-    \begin{itemize}
-      \setlength{\itemsep}{1ex}
-      \item The initial state
-        \begin{itemize}
-          \item Scaling of entropy deposition
-          \item Granularity
-        \end{itemize}
-      \item The QGP medium
-        \begin{itemize}
-          \item Thermalization time
-          \item Temperature dependence of transport coefficients $\eta/s$ and $\zeta/s$
-        \end{itemize}
-    \end{itemize}
-    \column{.35\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{exptfigs/flow} \\
-    $\quad\downarrow$ \\
-    \includegraphics[width=\textwidth]{region_shear_empty}
-  \end{columns}
+{
+\usebackgroundtemplate{\includegraphics[width=\paperwidth]{whitepaper}}
+\begin{frame}[plain]
+  \begin{tikzpicture}[remember picture, overlay]
+    \node[anchor=west, inner sep=1em, yshift=-2em, text width=.6\paperwidth]
+    at (current page.west) {
+      \color{white}%
+      \small%
+      \raisebox{-1ex}{\Huge\color{lightgray}``\ \ }%
+      The next 5--10 years of the US relativistic heavy-ion program will deliver\ldots
+      the quantitative determination of the transport coefficients of the Quark Gluon
+      Plasma, such as the temperature dependent shear-viscosity to entropy-density
+      ratio $(\eta/s)(T)$ \ldots
+      \raisebox{-2.4ex}{\Huge\color{lightgray}\ \ ''}
+    };
+  \end{tikzpicture}
 \end{frame}
+}
 
 \tikzset{
   box/.style={
@@ -286,17 +282,23 @@
 
 \begin{frame}[t]{Hydrodynamics}
   \eventframes{{fade,fade,,,,fade,fade}}
+  \vspace{-1ex}
   \begin{center}
-    \bf OSU VISH2+1
+    {\bf OSU VISH2+1} \\[1ex]
+    \tiny
+    PRC 77 064901 [0712.3715] \quad
+    CPC 199 61 [1409.8164]
   \end{center}
+  \vspace{-1ex}
   \begin{itemize}
     \setlength{\itemsep}{1ex}
-    \item Boost-invariant hydro
+    \item Boost-invariant viscous hydrodynamics
     \item Temperature-dependent shear and bulk viscosities
     \item Hybrid equation of state
       \begin{itemize}
         \item HRG EOS at low temperature
-        \item HOTQCD lattice EOS at high temperature
+        \item HOTQCD lattice EOS at high temperature \\
+          {\tiny PRD 90 094503 [1407.6387]}
       \end{itemize}
   \end{itemize}
 \end{frame}
@@ -336,8 +338,9 @@
   \medskip
   Convert hydrodynamic medium $\rightarrow$ particles at tunable $T_\text{switch}$
   \begin{itemize}
-    \item Randomly sample Cooper-Frye formula
-    \item Novel implementation of shear and bulk viscous corrections based on relaxation-time approximation
+    \item Particle species and momenta sampled from thermal hadron resonance gas (Cooper-Frye)
+    \item Novel implementation of shear and bulk viscous corrections based on relaxation-time approximation \\
+      {\tiny PRC 82 044901 [1003.0413] \quad PRC 85 044909 [1109.5181] \quad PRC 83 044910 [1012.5927]}
     \item Masses of unstable resonances sampled from Breit-Wigner distribution
   \end{itemize}
   \bigskip
@@ -352,7 +355,6 @@
     \column{.55\textwidth}
     Initial condition
     \begin{itemize}
-      \item Normalization factors
       \item \trento\ entropy deposition $p$
       \item Multiplicity fluctuation $\sigma_\text{fluct}$
       \item Gaussian nucleon width $w$
@@ -365,8 +367,8 @@
     \medskip
     QGP medium
     \begin{itemize}
-      \item $\eta/s$ min, slope, and curvature
-      \item $\zeta/s$ max and width
+      \item $\eta/s$ min, slope, curvature
+      \item $\zeta/s$ max, width
       \item $T_\text{switch}$ (hydro to UrQMD)
     \end{itemize}
     \column{.5\textwidth}
@@ -389,10 +391,13 @@
     Centrality dependence of: \\[1ex]
     \begin{itemize}
       \setlength{\itemsep}{1.5ex}
-      \item Charged particle yields $dN_\text{ch}/d\eta$
+      \item Charged particle yields $dN_\text{ch}/d\eta$ \\
+        {\tiny PRL 106 032301 [1012.1657], PRL 116 222302 [1512.06104]}
       \item Identified particle ($\pi$, $K$, $p$) yields $dN/dy$
-        and mean transverse momenta $\langle p_T \rangle$ (2.76 TeV only)
-      \item Anisotropic flow cumulants $v_n\{2\}$
+        and mean transverse momenta $\langle p_T \rangle$ (2.76 TeV only) \\
+        {\tiny PRC 88 044910 [1303.0737]}
+      \item Anisotropic flow cumulants $v_n\{2\}$ \\
+        {\tiny PRL 116 132302 [1602.01119]}
     \end{itemize}
     \column{.4\textwidth}
     \centering
@@ -476,13 +481,19 @@
   \includegraphics[height=\paperheight]<1-2>{posterior}
   \includegraphics[height=\paperheight]<3>{posterior_withnorm}
   \begin{tikzpicture}[remember picture, overlay]
-    \node[below left=1.5em and 2.5em of current page.north east, color=theme, font=\Large\rm]
+    \node[below left=1em and 2.2em of current page.north east, color=theme, font=\Large\rm]
     (title) {
       Posterior distribution
     };
-    \node[below of=title, font=\small, align=left] {
-      Estimated values: medians \\
-      Uncertainties: 90\% credible intervals
+    \node[below=1ex of title, anchor=north, font=\small, align=left] {
+      \only<1>{%
+        Diagonals: prob.\ dists.\ of each param. \\
+        Off-diagonals: correlations b/w pairs \\[1ex]
+        Estimated values: medians \\
+        Uncertainties: 90\% credible intervals
+      }
+      \only<2>{Much more information here!}
+      \only<3>{with normalization factors}
     };
   \end{tikzpicture}
 \end{frame}
@@ -542,7 +553,7 @@
     \item Can be ``tall'' or ``wide'', but not both
     \item Short and wide (green) slightly favored
   \end{itemize}
-  \footnotesize\flushright See talk by G.~Denicol, Wed.~17:30
+  \scriptsize\flushright See also talk by G.~Denicol, Wed.~17:30
 \end{frame}
 
 \againframe<2>[plain,noframenumbering]{posterior}
@@ -582,9 +593,16 @@
 \end{frame}
 
 
+\begin{frame}{More flow observables}
+  \includegraphics{flow_extra}
+  \tiny\flushright Data: ALICE, PRL 107 032301 [1105.3865]; PRL 116 132302 [1602.01119]
+\end{frame}
+
+
 \section{Conclusion}
 
 \begin{frame}{Summary and outlook}
+  \vspace{1em}
   \begin{itemize}
     \item Global, multi-parameter fit of event-by-event collision model to diverse experimental data at 2.76 and 5.02 TeV
     \item Constrained initial state entropy deposition, fluctuations, and granularity
@@ -598,6 +616,10 @@
     \item Include RHIC data to further constrain transport coefficients
     \item Improve uncertainty quantification
   \end{itemize}
+  \begin{center}
+    This project is open source! \\
+    \url{https://github.com/jbernhard/qm2017}
+  \end{center}
 \end{frame}
 
 
@@ -615,9 +637,9 @@
   \begin{itemize}
     \item Statistical (uncorrelated) uncertainty
       \begin{equation*}
-        c_{ij} = \delta_{ij} \quad\implies\quad \Sigma = \text{diag}(\sigma_i)
+        c_{ij} = \delta_{ij} \quad\implies\quad \Sigma_\text{stat} = \text{diag}(\sigma_i^2)
       \end{equation*}
-    \item Systematic uncertainty: assume Gaussian correlation structure:
+    \item Systematic uncertainty: assume Gaussian correlation function
       \begin{equation*}
         c_{ij} = \exp\Biggl[ -\frac{1}{2} \biggl( \frac{x_i - x_j}{100} \biggr)^2 \Biggr]
       \end{equation*}
@@ -625,8 +647,40 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Multivariate output}
+\begin{frame}{Conditioning a Gaussian process}
+  \newcommand{\y}{\mathbf y}
+  Given
+  \begin{itemize}
+    \item training input points $X$
+    \item observed training outputs $\y$ at $X$
+    \item covariance function $\sigma$
+  \end{itemize}
+  the predictive distribution at arbitrary test points $X_*$ is the multivariate-normal distribution
+  \begin{align*}
+    \y_* &\sim \mathcal N(\boldsymbol\mu, \Sigma) \\
+    \boldsymbol\mu &= \sigma(X_*, X)\sigma(X, X)^{-1}\y \\
+    \Sigma &= \sigma(X_*,X_*) - \sigma(X_*,X)\sigma(X,X)^{-1}\sigma(X,X_*)
+  \end{align*}
+\end{frame}
 
+\begin{frame}{Multivariate output}
+  \begin{columns}
+    \column{.55\textwidth}
+    Many highly correlated outputs \\
+    $\rightarrow$ \textbf{principal component analysis} \\[1em]
+    PCs = eigenvectors of sample covariance matrix
+    \begin{equation*}
+      Y\tran Y = U \Lambda U\tran
+    \end{equation*}
+    Transform data into orthogonal, uncorrelated linear combinations
+    \begin{equation*}
+      Z = \sqrt m \, YU
+    \end{equation*}
+    Emulate each PC independently
+    \column{.45\textwidth}
+    Example transformation of two observables \\[2ex]
+    \includegraphics{pca}
+  \end{columns}
 \end{frame}
 
 
