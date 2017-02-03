@@ -12,6 +12,10 @@ import yaml
 from . import cachedir, systems
 
 
+# TODO improve flow cumulant observable keys:
+# cumulant v_n{k} should have obs == 'vnk' and subobs == (n, k)
+
+
 class HEPData:
     """
     Interface to a HEPData yaml file.
@@ -43,7 +47,16 @@ class HEPData:
         # extract centrality bins
         for x in self.data['independent_variables']:
             if x['header']['name'].lower() == 'centrality':
-                cent = [(v['low'], v['high']) for v in x['values']]
+                try:
+                    cent = [(v['low'], v['high']) for v in x['values']]
+                except KeyError:
+                    # try to guess bins from midpoints
+                    mids = [v['value'] for v in x['values']]
+                    width = set(a - b for a, b in zip(mids[1:], mids[:-1]))
+                    if len(width) > 1:
+                        raise ValueError('variable bin widths')
+                    d = width.pop() / 2
+                    cent = [(m - d, m + d) for m in mids]
                 break
 
         # select bins whose upper edge is <= maxcent
@@ -184,22 +197,59 @@ def get_extra_data():
     """
     data = {s: {} for s in systems}
 
-    data['PbPb2760']
-
     # PbPb2760 flow correlations
-    system = 'PbPb2760'
+    for obs, table in [('sc', 1), ('sc_central', 3)]:
+        d = HEPData(1452590, table)
+        data['PbPb2760'][obs] = {
+            mn: d.dataset('SC({},{})'.format(*mn))
+            for mn in [(3, 2), (4, 2)]
+        }
 
-    d = HEPData(1452590, 1)
-    data[system]['sc'] = {
-        mn: d.dataset('SC({},{})'.format(*mn))
-        for mn in [(3, 2), (4, 2)]
-    }
+    # PbPb2760 central flows vn{2}
+    system, obs = 'PbPb2760', 'vn_central'
+    data[system][obs] = {}
 
-    d = HEPData(1452590, 3)
-    data[system]['sc_central'] = {
-        mn: d.dataset('SC({},{})'.format(*mn))
-        for mn in [(3, 2), (4, 2)]
-    }
+    for n, table in [(2, 11), (3, 12)]:
+        dset = HEPData(900651, table).dataset()
+        # the (unlabeled) errors in the dataset are actually stat
+        dset['yerr']['stat'] = dset['yerr'].pop('sum')
+        # estimate sys error fraction
+        dset['yerr']['sys'] = {2: .025, 3: .040}[n]*dset['y']
+        data[system][obs][n] = dset
+
+    # PbPb2760 and PbPb5020 v2{4}
+    for system, table in [('PbPb2760', 3), ('PbPb5020', 1)]:
+        cent = []
+        x = []
+        y = []
+        yerr = dict(stat=[], sys=[])
+
+        # discard missing values in these datasets
+        # TODO handle this in HEPData class
+        d = HEPData(1419244, table)
+        for v, x_, cent_ in zip(d.y('V2{4}'), d.cent['x'], d.cent['cent']):
+            value = v['value']
+            if value == '-':
+                continue
+
+            cent.append(cent_)
+            x.append(x_)
+            y.append(value)
+            for e in v['errors']:
+                yerr[e['label']].append(e['symerror'])
+
+        # fix incorrect data point
+        if system == 'PbPb5020':
+            y[0] = .036
+            yerr['stat'][0] = .003
+            yerr['sys'][0] = .0006
+
+        data[system]['vn4'] = {2: dict(
+            cent=cent,
+            x=np.array(x),
+            y=np.array(y),
+            yerr={k: np.array(v) for k, v in yerr.items()}
+        )}
 
     return data
 

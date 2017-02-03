@@ -883,6 +883,78 @@ def flow_corr():
 
 
 @plot
+def flow_extra():
+    """
+    vn{2} in central bins and v2{4}.
+
+    """
+    plots, width_ratios = zip(*[
+        (('vn_central', 'Central two-particle cumulants', r'$v_n\{2\}$'), 2),
+        (('vn4', 'Four-particle cumulants', r'$v_2\{4\}$'), 3),
+    ])
+
+    fig, axes = plt.subplots(
+        figsize=(textwidth, .42*textwidth),
+        ncols=len(plots), gridspec_kw=dict(width_ratios=width_ratios)
+    )
+
+    cmaps = {2: plt.cm.Blues, 3: plt.cm.Oranges}
+
+    for (obs, title, ylabel), ax in zip(plots, axes):
+        for sys, (cmapx, dashes, fmt) in zip(
+                systems, [
+                    (.7, (None, None), 'o'),
+                    (.5, (3, 2), 's'),
+                ]
+        ):
+            syslabel = '{:.2f} TeV'.format(parse_system(sys)[1]/1000)
+            for subobs, dset in model.map_data[sys][obs].items():
+                x = dset['x']
+                y = dset['Y']
+
+                ax.plot(
+                    x, y,
+                    color=cmaps[subobs](cmapx), dashes=dashes,
+                    label='Model ' + syslabel
+                )
+
+                try:
+                    dset = expt.extra_data[sys][obs][subobs]
+                except KeyError:
+                    continue
+
+                x = dset['x']
+                y = dset['y']
+                yerr = dset['yerr']
+
+                ax.errorbar(
+                    x, y, yerr=yerr['stat'],
+                    fmt=fmt, ms=2.2, capsize=0, color='.25', zorder=100,
+                    label='ALICE ' + syslabel
+                )
+
+                ax.fill_between(
+                    x, y - yerr['sys'], y + yerr['sys'],
+                    color='.9', zorder=-10
+                )
+
+                if obs == 'vn_central':
+                    ax.text(
+                        x[-1] + .15, y[-1], '$v_{}$'.format(subobs),
+                        color=cmaps[subobs](.99), ha='left', va='center'
+                    )
+
+        auto_ticks(ax, 'y', minor=2)
+        ax.set_xlim(0, dset['cent'][-1][1])
+
+        ax.set_xlabel('Centrality %')
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+
+    ax.legend(loc='lower right')
+
+
+@plot
 def design():
     """
     Projection of a LH design into two dimensions.

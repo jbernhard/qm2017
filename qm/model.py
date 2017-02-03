@@ -128,11 +128,12 @@ class ModelData:
                     weights=events['dN_dy'][species]
                 )
 
-            if obs == 'vn':
+            if obs.startswith('vn'):
                 n = obs_stack.pop()
+                k = 4 if obs == 'vn4' else 2
                 return lambda events: flow.Cumulant(
                     events['M'], *events['Qn'].T[1:]
-                ).flow(n, 2, imaginary='zero')
+                ).flow(n, k, imaginary='zero')
 
             if obs.startswith('sc'):
                 mn = obs_stack.pop()
@@ -207,11 +208,11 @@ def observables(system, map_point=False):
     # also compute "extra" data for the MAP point
     if map_point:
         data = dict(expt.extra_data[system], **data)
-        # flow correlations not yet available for PbPb5020
+        # flow correlations and central flow not yet available for PbPb5020
         if system == 'PbPb5020':
             data = dict(
                 ((obs, expt.extra_data['PbPb2760'][obs])
-                for obs in ['sc', 'sc_central']),
+                for obs in ['sc', 'sc_central', 'vn_central']),
                 **data
             )
 
