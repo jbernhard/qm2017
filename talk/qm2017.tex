@@ -118,6 +118,8 @@
   \includegraphics[height=.1\textheight]{logos/dukeqcd}
   \hspace{.08\textwidth}
   \includegraphics[height=.1\textheight]{logos/qm2017}
+  \hspace{.08\textwidth}
+  \includegraphics[height=.1\textheight]{logos/nsf}
 \end{frame}
 
 
@@ -293,13 +295,13 @@
   \begin{itemize}
     \setlength{\itemsep}{1ex}
     \item Boost-invariant viscous hydrodynamics
-    \item Temperature-dependent shear and bulk viscosities
     \item Hybrid equation of state
       \begin{itemize}
         \item HRG EOS at low temperature
         \item HOTQCD lattice EOS at high temperature \\
           {\tiny PRD 90 094503 [1407.6387]}
       \end{itemize}
+    \item Temperature-dependent shear and bulk viscosities
   \end{itemize}
 \end{frame}
 
@@ -459,6 +461,7 @@
   Prior = flat in design space \\[1ex]
   Likelihood${} \propto \exp\bigl[ -\frac{1}{2} \ydiff\tran \Sigma^{-1} \ydiff \bigr]$ \\[.5ex]
   \begin{itemize}
+    \setlength{\itemsep}{.8ex}
     \item $\Sigma = \text{covariance matrix} = \Sigma_\text{experiment} + \Sigma_\text{model}$
     \item $\Sigma_\text{experiment} = {}$stat (diagonal) + sys (non-diagonal)
     \item $\Sigma_\text{model}$ conservatively estimated as 5\% (to be improved)
@@ -477,11 +480,10 @@
 \againframe<5>[noframenumbering]{flowchart}
 
 \begin{frame}<1>[label=posterior, plain]
-  \centering
   \includegraphics[height=\paperheight]<1-2>{posterior}
   \includegraphics[height=\paperheight]<3>{posterior_withnorm}
   \begin{tikzpicture}[remember picture, overlay]
-    \node[below left=1em and 2.2em of current page.north east, color=theme, font=\Large\rm]
+    \node[below left=1em and 2.5em of current page.north east, color=theme, font=\Large\rm]
     (title) {
       Posterior distribution
     };
@@ -490,9 +492,13 @@
         Diagonals: prob.\ dists.\ of each param. \\
         Off-diagonals: correlations b/w pairs \\[1ex]
         Estimated values: medians \\
-        Uncertainties: 90\% credible intervals
+        Uncertainties: 90\% credible intervals%
+      }%
+      \only<2>{%
+        Much more information here! \\[2ex]
+        But what can the model do \\
+        at a ``best-fit'' point?
       }
-      \only<2>{Much more information here!}
       \only<3>{with normalization factors}
     };
   \end{tikzpicture}
@@ -588,14 +594,18 @@
   \begin{equation*}
     \text{SC}(m, n) = \langle v_m^2 v_n^2 \rangle  - \langle v_m^2 \rangle \langle v_n^2 \rangle
   \end{equation*}
-  \includegraphics{flow_corr} \\
-  \tiny\flushright Data: ALICE, PRL 117 182301 [1604.07663]
+  \includegraphics{flow_corr} \\[1em]
+  \tiny *Model calculation at best-fit point only \hfill
+  Data: ALICE, PRL 117 182301 [1604.07663]
 \end{frame}
 
 
 \begin{frame}{More flow observables}
-  \includegraphics{flow_extra}
-  \tiny\flushright Data: ALICE, PRL 107 032301 [1105.3865]; PRL 116 132302 [1602.01119]
+  \vspace{2em}
+  \includegraphics{flow_extra} \\[1em]
+  \tiny *Model calculation at best-fit point only \hfill
+  Data: ALICE, PRL 107 032301 [1105.3865] \\
+  \hfill PRL 116 132302 [1602.01119]
 \end{frame}
 
 
