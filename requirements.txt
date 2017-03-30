@@ -1,3 +1,4 @@
+emcee
 h5py
 hic
 numpy
