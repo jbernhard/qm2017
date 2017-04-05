@@ -477,8 +477,9 @@ def _posterior(params=None, ignore=None, scale=1, padr=.99, padt=.98):
         ax.set_yticks(ticks)
 
         ax.annotate(
-            format_ci(d), (.62, .92), xycoords='axes fraction',
-            ha='center', va='bottom', fontsize=4.5
+            format_ci(d),
+            (.62, .87 if plt.rcParams['font.family'] == ['serif'] else .92),
+            xycoords='axes fraction', ha='center', va='bottom', fontsize=4.5
         )
 
     for ny, nx in zip(*np.tril_indices_from(axes, k=-1)):
@@ -1193,10 +1194,21 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='generate plots')
     parser.add_argument(
+        '--serif', action='store_true',
+        help='use STIX serif font'
+    )
+    parser.add_argument(
         'plots', nargs='*', type=arg_to_plot, metavar='PLOT',
         help='{} (default: all)'.format(', '.join(choices).join('{}'))
     )
     args = parser.parse_args()
+
+    if args.serif:
+        plt.rcParams.update({
+            'font.family': 'serif',
+            'font.serif': ['STIXGeneral'],
+            'mathtext.fontset': 'stix',
+        })
 
     if args.plots:
         for p in args.plots:
