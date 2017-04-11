@@ -1,2 +1,5 @@
 $out_dir = 'build';
-$ENV{'TEXINPUTS'} = 'template:';
+
+use Cwd 'abs_path';
+$ENV{'TEXINPUTS'} = abs_path('template') . ':';
+$ENV{'BSTINPUTS'} = abs_path('template') . ':';
