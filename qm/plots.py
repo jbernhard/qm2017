@@ -1198,6 +1198,10 @@ if __name__ == '__main__':
         help='use STIX serif font'
     )
     parser.add_argument(
+        '--black', action='store_true',
+        help='use true black for text and axes'
+    )
+    parser.add_argument(
         'plots', nargs='*', type=arg_to_plot, metavar='PLOT',
         help='{} (default: all)'.format(', '.join(choices).join('{}'))
     )
@@ -1209,6 +1213,15 @@ if __name__ == '__main__':
             'font.serif': ['STIXGeneral'],
             'mathtext.fontset': 'stix',
         })
+
+    if args.black:
+        plt.rcParams.update(dict.fromkeys([
+            'text.color',
+            'axes.edgecolor',
+            'axes.labelcolor',
+            'xtick.color',
+            'ytick.color',
+        ], 'black'))
 
     if args.plots:
         for p in args.plots:
