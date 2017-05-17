@@ -1206,7 +1206,7 @@ FUNCTION {book}
   if$
   format.note output
   fin.entry
-  write.url
+  % write.url
 }
 
 FUNCTION {booklet}
